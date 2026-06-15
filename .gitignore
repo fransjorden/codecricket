@@ -7,3 +7,4 @@ harvested/
 *.log
 package-lock.json
 .claude/
+.vercel
