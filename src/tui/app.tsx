@@ -24,6 +24,7 @@ import { defaultSecretPolicy, loadProjectsMap, resolveWorkspace, saveProjectsMap
 import { homeDir } from "../core/paths.js";
 import { readText } from "../core/fsx.js";
 import { diffLines, type DiffLine } from "../util/diffPreview.js";
+import { HeaderCricket, HopTrack } from "./cricket.js";
 import type { Direction } from "../core/merge.js";
 import type { SecretMode } from "../types.js";
 
@@ -139,6 +140,9 @@ function includable(it: Item): boolean {
 }
 function directionLabel(d: Direction): string {
   return d === "claude-to-codex" ? "Pushing Claude → Codex" : d === "codex-to-claude" ? "Pulling Codex → Claude" : "Two-way sync";
+}
+function hopDir(d: Direction): "push" | "pull" | "both" {
+  return d === "claude-to-codex" ? "push" : d === "codex-to-claude" ? "pull" : "both";
 }
 function secretLabel(m: SecretMode): string {
   return m === "gitignore-guard" ? "secrets kept out of git"
@@ -409,7 +413,8 @@ export function App({ opts }: { opts: TuiOptions }) {
   const Header = (
     <box flexDirection="column">
       <box flexDirection="row" backgroundColor={PAL.headerBg} paddingLeft={1} paddingRight={1}>
-        <text fg={PAL.cyan} attributes={1}>cc-codex-sync</text>
+        <HeaderCricket fg={PAL.green} />
+        <text fg={PAL.cyan} attributes={1}>codecricket</text>
         <text fg={PAL.gray}>{"  ·  "}</text>
         <text fg={PAL.white}>{directionLabel(direction)}</text>
         <text fg={PAL.gray}>{"  ·  " + secretLabel(secretMode)}</text>
@@ -443,6 +448,9 @@ export function App({ opts }: { opts: TuiOptions }) {
       <box flexDirection="column" padding={1}>
         {Header}
         <box border borderColor={PAL.yellow} title="Apply changes?" flexDirection="column" padding={1} marginTop={1}>
+          <box marginBottom={1}>
+            <HopTrack direction={hopDir(direction)} width={Math.min(34, Math.max(16, width - 30))} />
+          </box>
           <text><span fg={PAL.gray}>Direction   </span>{directionLabel(direction)}</text>
           <text><span fg={PAL.gray}>Included    </span>{`${apply.inc.length} project(s)`}</text>
           <text><span fg={PAL.gray}>Will write  </span>{`${apply.agentsWrites} AGENTS.md + ${apply.claudeWrites} Claude file(s) `}<span fg={PAL.gray}>(each backed up to .bak)</span></text>
@@ -486,6 +494,9 @@ export function App({ opts }: { opts: TuiOptions }) {
       <box flexDirection="column" padding={1}>
         {Header}
         <text fg={PAL.white} attributes={1}>{`\nApplying · ${directionLabel(direction)}`}</text>
+        <box marginTop={1}>
+          <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} />
+        </box>
         <box flexDirection="column" marginTop={1}>
           {apply.inc.map((it) => {
             const st = applyProg[it.project.name] ?? "pending";
@@ -574,7 +585,10 @@ export function App({ opts }: { opts: TuiOptions }) {
 
       <box flexDirection="column" marginTop={1}>
         {scanning ? (
-          <text><span fg={PAL.cyan}>{spin}</span><span fg={PAL.gray}>{` Scanning projects… ${scanned}/${projects.length}`}</span></text>
+          <box flexDirection="column">
+            <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} />
+            <text><span fg={PAL.cyan}>{spin}</span><span fg={PAL.gray}>{` Scanning projects… ${scanned}/${projects.length}`}</span></text>
+          </box>
         ) : (
           <text>
             <span fg={PAL.gray}>{`${items.length} projects · `}</span>

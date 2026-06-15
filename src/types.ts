@@ -1,4 +1,4 @@
-// Shared types for cc-codex-sync.
+// Shared types for codecricket.
 //
 // Core principle: artifacts are carried as raw bytes. Parsed views (frontmatter
 // fields, etc.) exist only for routing/display and are NEVER used to regenerate

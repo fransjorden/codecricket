@@ -29,7 +29,7 @@ function memoryDirFromMapValue(value: string, workspace: string): string {
 export function runInit(opts: InitOptions): void {
   const workspace = resolveWorkspace(opts.workspace);
   const map: ProjectsMap = loadProjectsMap();
-  map.workspace = workspace; // persist so `ccsync` works from any directory
+  map.workspace = workspace; // persist so `cricket` works from any directory
   const threshold = opts.suggestionThreshold ?? 2;
 
   log.step(`Workspace: ${workspace}`);

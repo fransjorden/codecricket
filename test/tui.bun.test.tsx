@@ -14,7 +14,7 @@ test("dashboard renders header, table, and a project row", async () => {
   const ws = path.join(tmp, "ws").replace(/\\/g, "/");
   const mem = path.join(tmp, "mem").replace(/\\/g, "/");
   for (const d of [`${ws}/alpha`, mem]) mkdirSync(d, { recursive: true });
-  process.env.CCSYNC_HOME = path.join(tmp, "home");
+  process.env.CODECRICKET_HOME = path.join(tmp, "home");
   writeFileSync(`${ws}/alpha/CLAUDE.md`, "# Alpha\n\nguidance\n");
   writeFileSync(`${mem}/MEMORY.md`, "# mem\n- token pk_000000000_EXAMPLETOKEN0000000000000000\n");
   saveProjectsMap({ version: 1, workspace: ws, projects: { alpha: { projectDir: `${ws}/alpha`, memoryDir: mem } } });
@@ -31,7 +31,7 @@ test("dashboard renders header, table, and a project row", async () => {
     if (frame.includes("alpha") && frame.includes("with changes")) break;
     await new Promise((r) => setTimeout(r, 25));
   }
-  expect(frame).toContain("cc-codex-sync");
+  expect(frame).toContain("codecricket");
   expect(frame).toContain("Pushing Claude → Codex");
   expect(frame).toContain("PROJECT");
   expect(frame).toContain("alpha");

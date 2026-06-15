@@ -87,7 +87,7 @@ export function runHarvest(opts: HarvestOptions): void {
   if (!opts.accept) {
     log.info("");
     log.ok(`Staged ${staged.length} proposal(s). Review them, then accept into a project with:`);
-    log.info(log.dim(`  ccsync harvest ${opts.project ?? "<project>"} --accept`));
+    log.info(log.dim(`  cricket harvest ${opts.project ?? "<project>"} --accept`));
     return;
   }
 

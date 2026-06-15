@@ -43,8 +43,8 @@ export function runTui(opts: TuiOptions): void {
   }
   if (!hasBun()) {
     console.error("The dashboard needs Bun — the OpenTUI engine runs under it.");
-    console.error("Install it once:  npm install -g bun   then run `ccsync` again.");
-    console.error("In the meantime, `ccsync status --all` and `ccsync sync …` work under Node.");
+    console.error("Install it once:  npm install -g bun   then run `cricket` again.");
+    console.error("In the meantime, `cricket status --all` and `cricket sync …` work under Node.");
     process.exitCode = 1;
     return;
   }

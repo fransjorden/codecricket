@@ -1,16 +1,17 @@
 {
-  "name": "cc-codex-sync",
+  "name": "codecricket",
   "version": "0.1.0",
-  "description": "Bidirectional sync between Claude Code (CLAUDE.md + memory) and OpenAI Codex (AGENTS.md), so you can switch tools inside living projects.",
+  "description": "codecricket — bidirectional sync between Claude Code (CLAUDE.md + memory) and OpenAI Codex (AGENTS.md), so you can hop your context between tools inside living projects.",
   "type": "module",
   "bin": {
-    "ccsync": "./dist/cli.js"
+    "cricket": "./dist/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
-    "ccsync": "tsx src/cli.ts",
+    "cricket": "tsx src/cli.ts",
     "tui": "bun src/tui/main.tsx",
+    "cricket-demo": "bun src/tui/cricket.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tui.json",
     "test": "vitest run",
     "test:tui": "bun test test/tui.bun.test.tsx",

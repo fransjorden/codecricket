@@ -1,4 +1,9 @@
-// The ccsync marker grammar for AGENTS.md.
+// The `ccsync:` marker grammar for AGENTS.md.
+//
+// NOTE: the `ccsync:` token is the ON-DISK WIRE FORMAT and is deliberately kept
+// even though the tool was renamed to codecricket — it is serialized into every
+// already-synced AGENTS.md. Renaming it would make existing files unparseable and
+// break the byte-exact round-trip. It is a format identifier, not branding.
 //
 // AGENTS.md = [leading foreign] + managed regions + [trailing foreign].
 // Anything that is not a `ccsync:` marker is FOREIGN and passed through

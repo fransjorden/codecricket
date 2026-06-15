@@ -371,7 +371,7 @@ function printPlan(pp: ProjectPlan, opts: SyncOptions, willWrite: boolean): void
   log.info("");
   log.info(log.bold(`▶ ${pp.name}`) + log.dim(`  (${pp.memorySource} memory)`));
   if (pp.noMemoryResolution) {
-    log.warn(`No memory found at the derived path. If this project was renamed, map it: ccsync init --map ${pp.name}=<old-name>`);
+    log.warn(`No memory found at the derived path. If this project was renamed, map it: cricket init --map ${pp.name}=<old-name>`);
   }
   if (changed.length === 0) {
     log.ok("in sync — nothing to do");

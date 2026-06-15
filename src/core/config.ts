@@ -3,39 +3,49 @@ import path from "node:path";
 import type { ProjectsMap, SecretPolicy } from "../types.js";
 import { homeDir, toPosix } from "./paths.js";
 
-/** Where ccsync keeps its own state (projects.json, .sync-state.json, harvested/). */
-export function ccsyncHome(): string {
-  const env = process.env.CCSYNC_HOME;
-  return toPosix(env ? path.resolve(env) : `${homeDir()}/.cc-codex-sync`);
+/**
+ * Where codecricket keeps its own state (projects.json, sync-state.json, harvested/).
+ * Env: CODECRICKET_HOME (CCSYNC_HOME is still honored for backward compatibility).
+ * If no env is set and only the legacy ~/.cc-codex-sync dir exists, keep using it
+ * so the rename never strands an existing projects.json / sync-state.
+ */
+export function stateHome(): string {
+  const env = process.env.CODECRICKET_HOME ?? process.env.CCSYNC_HOME;
+  if (env) return toPosix(path.resolve(env));
+  const preferred = `${homeDir()}/.codecricket`;
+  const legacy = `${homeDir()}/.cc-codex-sync`;
+  if (!existsSync(preferred) && existsSync(legacy)) return toPosix(legacy);
+  return toPosix(preferred);
 }
 
 export function ensureHome(): string {
-  const home = ccsyncHome();
+  const home = stateHome();
   if (!existsSync(home)) mkdirSync(home, { recursive: true });
   return home;
 }
 
 export function projectsMapPath(): string {
-  return `${ccsyncHome()}/projects.json`;
+  return `${stateHome()}/projects.json`;
 }
 
 export function statePath(): string {
-  return `${ccsyncHome()}/sync-state.json`;
+  return `${stateHome()}/sync-state.json`;
 }
 
 export function harvestedDir(): string {
-  return `${ccsyncHome()}/harvested`;
+  return `${stateHome()}/harvested`;
 }
 
 /**
  * The workspace that holds the project folders. Resolution order:
- *   explicit --workspace > CCSYNC_WORKSPACE > parent of cwd.
- * The tool lives at <workspace>/cc-codex-sync, so the parent of cwd is the
+ *   explicit --workspace > CODECRICKET_WORKSPACE (or legacy CCSYNC_WORKSPACE) > parent of cwd.
+ * The tool lives at <workspace>/codecricket, so the parent of cwd is the
  * workspace when run from the tool dir.
  */
 export function resolveWorkspace(explicit?: string): string {
   if (explicit) return toPosix(path.resolve(explicit));
-  if (process.env.CCSYNC_WORKSPACE) return toPosix(path.resolve(process.env.CCSYNC_WORKSPACE));
+  const wsEnv = process.env.CODECRICKET_WORKSPACE ?? process.env.CCSYNC_WORKSPACE;
+  if (wsEnv) return toPosix(path.resolve(wsEnv));
   const saved = loadProjectsMap().workspace;
   if (saved) return toPosix(path.resolve(saved));
   return toPosix(path.resolve(process.cwd(), ".."));

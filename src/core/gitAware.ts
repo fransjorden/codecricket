@@ -75,7 +75,7 @@ export function applyGitignore(plan: GitignorePlan): boolean {
   if (!plan.inRepo || plan.alreadyIgnored || !plan.gitignorePath || !plan.line) return false;
   const existing = existsSync(plan.gitignorePath) ? readFileSync(plan.gitignorePath, "utf8") : "";
   const sep = existing === "" || existing.endsWith("\n") ? "" : "\n";
-  const block = `${existing}${sep}# added by cc-codex-sync (keeps synced secrets out of git)\n${plan.line}\n`;
+  const block = `${existing}${sep}# added by codecricket (keeps synced secrets out of git)\n${plan.line}\n`;
   writeTextAtomic(plan.gitignorePath, block);
   return true;
 }

@@ -38,7 +38,7 @@ beforeAll(() => {
   proj = toPosix(path.join(ws, "proj"));
   mem = toPosix(path.join(tmp, "mem"));
   for (const d of [home, ws, proj, mem]) mkdirSync(d, { recursive: true });
-  process.env.CCSYNC_HOME = home;
+  process.env.CCSYNC_HOME = home; // legacy env var — still honored after the codecricket rename
 
   writeFileSync(`${proj}/CLAUDE.md`, CLAUDE_MD);
   writeFileSync(`${mem}/MEMORY.md`, MEMORY_INDEX);

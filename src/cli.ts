@@ -14,8 +14,8 @@ import type { SecretMode } from "./types.js";
 const program = new Command();
 
 program
-  .name("ccsync")
-  .description("Bidirectional sync between Claude Code (CLAUDE.md + memory) and Codex (AGENTS.md).")
+  .name("cricket")
+  .description("codecricket — bidirectional sync between Claude Code (CLAUDE.md + memory) and Codex (AGENTS.md).")
   .version("0.1.0")
   .option("-q, --quiet", "suppress non-essential output")
   .option("-v, --verbose", "verbose output")
