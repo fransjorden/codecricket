@@ -18,6 +18,8 @@ That round-trip has to be lossless, has to handle renamed projects, and must not
 leak the secrets that live in memory into a committed `AGENTS.md`. `ccsync` does
 all three.
 
+A personal tool, shared as-is. Overview: [ccsync.jorden.ai](https://ccsync.jorden.ai).
+
 ## Install
 
 ```bash
@@ -30,9 +32,10 @@ npm link            # provides the `ccsync` command
 
 Bun is only needed for the `ccsync` dashboard; `init`/`status`/`sync` run on Node.
 
-State lives in `~/.cc-codex-sync/` (override with `CCSYNC_HOME`). The workspace
-holding your project folders defaults to the parent of the current dir
-(override with `--workspace` or `CCSYNC_WORKSPACE`).
+State lives in `~/.cc-codex-sync/` (override with `CCSYNC_HOME`). `ccsync init`
+records the workspace that holds your project folders, so `ccsync` then works from
+any directory; without that it falls back to the parent of the current dir.
+Override anytime with `--workspace` or `CCSYNC_WORKSPACE`.
 
 ## Quick start
 
@@ -103,7 +106,7 @@ Conflicts resolve to the newest edit, or use `--prefer claude|codex`.
 
 | Command | What it does |
 |---|---|
-| `ccsync` / `ccsync tui` | Interactive terminal dashboard (default). Review diffs, stage, and apply. |
+| `ccsync` / `ccsync tui` | Interactive terminal dashboard (default). Review diffs, include/exclude, map stranded memory, and apply. |
 | `ccsync init` | Build/refresh `projects.json`; detect stranded memory dirs and suggest mappings. |
 | `ccsync status [project] [--all]` | Read-only drift report (recommended first command after a break). |
 | `ccsync sync [project] [--all]` | Sync a project. Flags below. |
