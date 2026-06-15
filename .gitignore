@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.bak
+.sync-state.json
+harvested/
+.sandbox/
+*.log
+package-lock.json
+.claude/

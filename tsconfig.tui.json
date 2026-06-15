@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
+    "module": "Preserve",
+    "moduleResolution": "Bundler"
+  },
+  "include": ["src/tui/**/*.tsx", "src/tui/**/*.ts", "src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "test", "**/*.test.ts"]
+}

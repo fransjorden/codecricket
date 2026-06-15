@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>cc-codex-sync — switch between Claude Code and Codex</title>
+<meta name="description" content="A small CLI that bidirectionally syncs your Claude Code CLAUDE.md + memory with OpenAI Codex's AGENTS.md, so you can switch coding agents inside a living project." />
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#0e1320; --line:#1c2333; --text:#c9d1d9; --dim:#6b7280;
+    --cyan:#7dd3fc; --green:#4ade80; --yellow:#fbbf24; --magenta:#c084fc; --red:#f87171; --white:#e5e7eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text)}
+  body{
+    font:14px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    -webkit-font-smoothing:antialiased; padding:32px 16px;
+  }
+  main{max-width:780px;margin:0 auto}
+  a{color:var(--cyan)}
+  .dim{color:var(--dim)}
+  .term{
+    border:1px solid var(--line); border-radius:10px; background:var(--panel);
+    overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.45);
+  }
+  .bar{
+    display:flex; align-items:center; gap:8px; padding:9px 12px;
+    background:#0a0f1a; border-bottom:1px solid var(--line);
+  }
+  .dot{width:11px;height:11px;border-radius:50%}
+  .r{background:#ff5f56}.y{background:#ffbd2e}.g{background:#27c93f}
+  .bar .t{margin-left:6px;color:var(--dim);font-size:12px}
+  .screen{padding:16px 16px 14px;white-space:pre;overflow-x:auto}
+  .screen .head{color:var(--cyan);font-weight:700}
+  .col{color:var(--dim)}
+  .cur{background:#1e3a5f;color:var(--white)}
+  .chg{color:var(--cyan)} .ok{color:var(--green)} .sec{color:var(--yellow)}
+  .mem{color:var(--dim)} .keys{color:var(--dim)} .key{color:var(--cyan)}
+  h1{font-size:20px;margin:26px 0 4px;color:var(--white)}
+  .tag{color:var(--dim);margin:0 0 18px}
+  ul{padding-left:18px;margin:14px 0}
+  li{margin:5px 0}
+  li b{color:var(--white);font-weight:600}
+  pre.cmd{
+    background:#0a0f1a;border:1px solid var(--line);border-radius:8px;
+    padding:12px 14px;overflow-x:auto;color:var(--text);margin:10px 0
+  }
+  pre.cmd .p{color:var(--green)}
+  .note{border-left:2px solid var(--line);padding:8px 0 8px 14px;color:var(--dim);margin:18px 0}
+  .links{margin:22px 0 8px}
+  .links a{margin-right:18px}
+  footer{color:var(--dim);font-size:12px;margin-top:26px;border-top:1px solid var(--line);padding-top:14px}
+</style>
+</head>
+<body>
+<main>
+  <div class="term" aria-label="ccsync dashboard preview">
+    <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">ccsync — dashboard</span></div>
+<div class="screen"><span class="dim">$ ccsync</span>
+
+<span class="head">cc-codex-sync</span>  <span class="dim">·  Pushing Claude → Codex  ·  secrets kept out of git</span>
+
+  <span class="col">PROJECT               STATE       PUSH  PULL  SEC  MEMORY    SYNCED</span>
+<span class="cur">❯◉ type-machine          <span class="chg">● changes</span>   <span class="chg">5</span>     ·     <span class="sec">3</span>    <span class="mem">override</span>  never  </span>
+  ◉ intimico-platform    <span class="chg">● changes</span>   <span class="chg">52</span>    ·     ·    <span class="mem">derived</span>   never
+  ◉ openclaw             <span class="chg">● changes</span>   <span class="chg">9</span>     ·     <span class="sec">1</span>    <span class="mem">derived</span>   never
+  · ivosw                <span class="ok">✓ in sync</span>   ·     ·     ·    <span class="mem">derived</span>   2m ago
+
+<span class="keys"><span class="key">↑↓</span> Move  <span class="key">Enter</span> View  <span class="key">Space</span> Include  <span class="key">A</span> Apply  <span class="key">D</span> Direction  <span class="key">M</span> Map  <span class="key">Q</span> Quit</span></div>
+  </div>
+
+  <h1>cc-codex-sync</h1>
+  <p class="tag">Switch between Claude Code and OpenAI Codex inside a living project — without losing your setup.</p>
+
+  <p>Most of my projects are Claude-Code-first: a <code>CLAUDE.md</code> and a curated memory store.
+  Codex reads <code>AGENTS.md</code>. <b style="color:var(--white)">ccsync</b> mirrors one into the other
+  (and back), so the same project works in either tool.</p>
+
+  <ul>
+    <li><b>Byte-exact round-trip.</b> Your <code>CLAUDE.md</code> + memory map into fenced regions of <code>AGENTS.md</code> and come back identical — webhooks, tokens, exact frontmatter and all.</li>
+    <li><b>Foreign-block safe.</b> Hand-written content and other tools' managed blocks in <code>AGENTS.md</code> are left untouched.</li>
+    <li><b>Rename-aware.</b> If a folder was renamed and its memory got stranded under the old name, it tells you — and you can attach it from the dashboard.</li>
+    <li><b>Keeps secrets out of git.</b> Live tokens render so Codex works, but the file is gitignored; it blocks if <code>AGENTS.md</code> is already tracked.</li>
+    <li><b>Dashboard or plain CLI.</b> An interactive terminal dashboard, or scriptable <code>init</code> / <code>status</code> / <code>sync</code>.</li>
+  </ul>
+
+  <pre class="cmd"><span class="p">$</span> git clone https://github.com/fransjorden/cc-codex-sync
+<span class="p">$</span> cd cc-codex-sync && npm install
+<span class="p">$</span> npm install -g bun   <span class="dim"># the dashboard renders via OpenTUI under Bun</span>
+<span class="p">$</span> npm link             <span class="dim"># provides the `ccsync` command</span>
+<span class="p">$</span> ccsync</pre>
+
+  <div class="note">
+    A personal tool, built for my own workflow and shared as-is. No telemetry, no warranty.
+    It only writes <code>AGENTS.md</code> + memory files (each backed up to <code>.bak</code>), and never on its own —
+    every change is shown first and confirmed.
+  </div>
+
+  <div class="links">
+    <a href="https://github.com/fransjorden/cc-codex-sync">GitHub →</a>
+    <a href="https://opentui.com">OpenTUI</a>
+    <a href="https://bun.sh">Bun</a>
+  </div>
+
+  <footer>Built by Frans Jorden · CLAUDE.md ⇄ AGENTS.md</footer>
+</main>
+</body>
+</html>
