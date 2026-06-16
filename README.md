@@ -29,7 +29,7 @@ That round-trip has to be lossless, has to handle renamed projects, and must not
 leak the secrets that live in memory into a committed `AGENTS.md`. `codecricket`
 does all three.
 
-A personal tool, shared as-is. Overview: [cricket.jorden.ai](https://cricket.jorden.ai).
+A personal tool, shared as-is. Overview: [codecricket.jorden.ai](https://codecricket.jorden.ai).
 
 ## Install
 
