@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>codecricket — hop your context between Claude Code and Codex</title>
-<meta name="description" content="codecricket — a small CLI that bidirectionally syncs your Claude Code CLAUDE.md + memory with OpenAI Codex's AGENTS.md, so you can hop coding agents inside a living project." />
+<title>codecricket — synchronize your context between Claude Code and Codex</title>
+<meta name="description" content="CodeCricket is a small command-line utility that keeps your Claude Code CLAUDE.md and memory synchronized with OpenAI Codex's AGENTS.md, so you can move between coding agents inside a living project." />
 <style>
   :root{
     --bg:#0b0e14; --panel:#0e1320; --line:#1c2333; --text:#c9d1d9; --dim:#6b7280;
@@ -60,7 +60,7 @@
     <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="t">codecricket — dashboard</span></div>
 <div class="screen"><span class="dim">$ cricket</span>
 
-<span class="head">%&gt;&gt; codecricket</span>  <span class="dim">·  Pushing Claude → Codex  ·  secrets kept out of git</span>
+<span class="head">%&gt;&gt; codecricket</span>  <span class="dim">·  Copying Claude → Codex  ·  secrets kept out of git</span>
 
   <span class="col">PROJECT               STATE       PUSH  PULL  SEC  MEMORY    SYNCED</span>
 <span class="cur">❯◉ type-machine          <span class="chg">● changes</span>   <span class="chg">5</span>     ·     <span class="sec">3</span>    <span class="mem">override</span>  never  </span>
@@ -68,17 +68,18 @@
   ◉ openclaw             <span class="chg">● changes</span>   <span class="chg">9</span>     ·     <span class="sec">1</span>    <span class="mem">derived</span>   never
   · ivosw                <span class="ok">✓ in sync</span>   ·     ·     ·    <span class="mem">derived</span>   2m ago
 
-<span class="keys"><span class="key">↑↓</span> Move  <span class="key">Enter</span> View  <span class="key">Space</span> Include  <span class="key">A</span> Apply  <span class="key">D</span> Direction  <span class="key">M</span> Map  <span class="key">Q</span> Quit</span></div>
+<span class="dim">4 project(s) found.   <span class="ok">1 in sync</span>, <span class="chg">3 with changes</span>, <span class="sec">2 with secrets</span>.    Press <span class="key">?</span> for Help.</span>
+<span class="keys"><span class="key">↑↓</span> Move  <span class="key">Enter</span> View  <span class="key">Space</span> Include  <span class="key">A</span> Apply  <span class="key">D</span> Direction  <span class="key">S</span> Secrets  <span class="key">M</span> Map  <span class="key">R</span> Rescan  <span class="key">Q</span> Quit</span></div>
   </div>
 
   <h1>codecricket</h1>
-  <p class="tag">Hop between Claude Code and OpenAI Codex inside a living project — without losing your setup.</p>
+  <p class="tag">Move freely between Claude Code and OpenAI Codex inside a living project, without ever losing your setup.</p>
 
 <pre class="bug">     /\        ,
     /  \      /
    /    \   ,/
   /      '--o\
- (  ::::::::  &gt;     <span class="lbl">the cricket hops your context  Claude ⇄ Codex</span>
+ (  ::::::::  &gt;     <span class="lbl">Synchronizes your Claude and Codex context — both ways.</span>
   '-.______.-'
     |  |  | \</pre>
 
@@ -112,7 +113,7 @@
     <a href="https://bun.sh">Bun</a>
   </div>
 
-  <footer>Built by Frans Jorden · CLAUDE.md ⇄ AGENTS.md</footer>
+  <footer>CodeCricket · Version 0.1.0 · (C) 2026 Frans Jorden Hoorn · CLAUDE.md ⇄ AGENTS.md</footer>
 </main>
 </body>
 </html>

@@ -15,10 +15,10 @@ const program = new Command();
 
 program
   .name("cricket")
-  .description("codecricket — bidirectional sync between Claude Code (CLAUDE.md + memory) and Codex (AGENTS.md).")
+  .description("CodeCricket keeps Claude Code (CLAUDE.md and memory) and Codex (AGENTS.md) synchronized, in both directions.")
   .version("0.1.0")
-  .option("-q, --quiet", "suppress non-essential output")
-  .option("-v, --verbose", "verbose output")
+  .option("-q, --quiet", "Suppress all non-essential output.")
+  .option("-v, --verbose", "Display additional, detailed output.")
   .hook("preAction", (thisCommand) => {
     const o = thisCommand.opts();
     setVerbosity({ verbose: !!o.verbose, quiet: !!o.quiet });
@@ -26,11 +26,11 @@ program
 
 program
   .command("init")
-  .description("Scan the workspace, build projects.json, detect stranded memory dirs.")
-  .option("-w, --workspace <dir>", "workspace dir holding the project folders")
-  .option("-m, --map <name=value...>", "explicit memory override(s), e.g. type-machine=meeting-tool")
-  .option("--accept-suggestions", "write suggested stranding mappings above the threshold")
-  .option("--suggestion-threshold <n>", "min score to auto-accept", (v) => parseInt(v, 10))
+  .description("Scan the workspace, build the projects.json file, and detect any orphaned memory directories.")
+  .option("-w, --workspace <dir>", "The workspace directory that holds your project folders.")
+  .option("-m, --map <name=value...>", "Set an explicit memory override, for example: type-machine=meeting-tool")
+  .option("--accept-suggestions", "Automatically accept the suggested mappings that score above the threshold.")
+  .option("--suggestion-threshold <n>", "The minimum score required to accept a suggestion automatically.", (v) => parseInt(v, 10))
   .action((opts) => {
     runInit({
       workspace: opts.workspace,
@@ -42,28 +42,28 @@ program
 
 function parseDirection(v: string): Direction {
   if (v === "claude-to-codex" || v === "codex-to-claude" || v === "both") return v;
-  throw new Error(`invalid --direction "${v}" (use both | claude-to-codex | codex-to-claude)`);
+  throw new Error(`Sorry, "${v}" is not a valid --direction. Please use one of: both | claude-to-codex | codex-to-claude`);
 }
 
 function parseSecretMode(v: string): SecretMode {
   const ok: SecretMode[] = ["gitignore-guard", "allow", "allow-tracked", "redact", "sidecar"];
   if (ok.includes(v as SecretMode)) return v as SecretMode;
-  throw new Error(`invalid --secrets "${v}" (use ${ok.join(" | ")})`);
+  throw new Error(`Sorry, "${v}" is not a valid --secrets mode. Please use one of: ${ok.join(" | ")}`);
 }
 
 program
   .command("sync")
-  .description("Sync a project (or --all). Dry-run by default on a project's first sync.")
-  .argument("[project]", "project name or path (defaults to current dir)")
-  .option("-a, --all", "sync every project in the workspace")
-  .option("-w, --workspace <dir>", "workspace dir")
-  .option("--dry-run", "show changes without writing")
-  .option("--apply", "write changes (overrides first-run dry-run default)")
-  .option("--direction <dir>", "both | claude-to-codex | codex-to-claude", parseDirection)
-  .option("--prefer <side>", "conflict winner: claude | codex")
-  .option("--no-memory", "sync instructions only, skip memory")
-  .option("--apply-deletions", "propagate deletions across sides")
-  .option("--secrets <mode>", "gitignore-guard | allow | allow-tracked | redact | sidecar", parseSecretMode)
+  .description("Synchronize a single project, or use --all for every project. The first run is a dry run by default.")
+  .argument("[project]", "The project name or path (defaults to the current directory).")
+  .option("-a, --all", "Synchronize every project in the workspace.")
+  .option("-w, --workspace <dir>", "The workspace directory.")
+  .option("--dry-run", "Preview the changes without writing anything.")
+  .option("--apply", "Write the changes (this overrides the dry-run default on a first run).")
+  .option("--direction <dir>", "The direction to copy: both | claude-to-codex | codex-to-claude", parseDirection)
+  .option("--prefer <side>", "When there is a conflict, the side that wins: claude | codex")
+  .option("--no-memory", "Synchronize the instructions only, and leave the memory untouched.")
+  .option("--apply-deletions", "Also propagate deletions from one side to the other.")
+  .option("--secrets <mode>", "How secrets are handled: gitignore-guard | allow | allow-tracked | redact | sidecar", parseSecretMode)
   .action((project, opts) => {
     runSync({
       project,
@@ -81,33 +81,33 @@ program
 
 program
   .command("status")
-  .description("Read-only drift report across projects.")
-  .argument("[project]", "project name or path")
-  .option("-a, --all", "all projects (default when no project given)")
-  .option("-w, --workspace <dir>", "workspace dir")
-  .option("--no-memory", "ignore memory drift")
+  .description("Display a read-only report of the differences across your projects.")
+  .argument("[project]", "The project name or path.")
+  .option("-a, --all", "Report on all projects (the default when no project is given).")
+  .option("-w, --workspace <dir>", "The workspace directory.")
+  .option("--no-memory", "Ignore any differences in memory.")
   .action((project, opts) => {
     runStatus({ project, all: !!opts.all, workspace: opts.workspace, noMemory: opts.memory === false });
   });
 
 program
   .command("skills")
-  .description("Sync custom local skills (e.g. nieuwsbrief-skill) between Claude and Codex. Ecosystem symlinks are skipped.")
-  .option("--direction <dir>", "both | claude-to-codex | codex-to-claude", parseDirection)
-  .option("--dry-run", "show what would copy")
-  .option("--apply", "actually copy")
+  .description("Synchronize your custom local skills (for example, nieuwsbrief-skill) between Claude and Codex. Ecosystem symlinks are skipped.")
+  .option("--direction <dir>", "The direction to copy: both | claude-to-codex | codex-to-claude", parseDirection)
+  .option("--dry-run", "Preview what would be copied.")
+  .option("--apply", "Perform the copy.")
   .action((opts) => {
     runSkills({ direction: opts.direction, dryRun: opts.dryRun, apply: !!opts.apply });
   });
 
 program
   .command("workspace")
-  .description("Sync the workspace-root CLAUDE.md (project index) with global ~/.codex/AGENTS.md.")
-  .option("-w, --workspace <dir>", "workspace dir")
-  .option("--direction <dir>", "both | claude-to-codex | codex-to-claude", parseDirection)
-  .option("--prefer <side>", "conflict winner: claude | codex")
-  .option("--dry-run", "show changes without writing")
-  .option("--apply", "write changes")
+  .description("Synchronize the workspace CLAUDE.md (your project index) with the global ~/.codex/AGENTS.md file.")
+  .option("-w, --workspace <dir>", "The workspace directory.")
+  .option("--direction <dir>", "The direction to copy: both | claude-to-codex | codex-to-claude", parseDirection)
+  .option("--prefer <side>", "When there is a conflict, the side that wins: claude | codex")
+  .option("--dry-run", "Preview the changes without writing anything.")
+  .option("--apply", "Write the changes.")
   .action((opts) => {
     runWorkspace({
       workspace: opts.workspace,
@@ -121,21 +121,21 @@ program
 program
   .command("tui", { isDefault: true })
   .aliases(["ui"])
-  .description("Interactive terminal dashboard (default when no command is given).")
-  .argument("[project]", "limit to one project")
-  .option("-w, --workspace <dir>", "workspace dir")
-  .option("--direction <dir>", "both | claude-to-codex | codex-to-claude", parseDirection)
-  .option("--secrets <mode>", "gitignore-guard | allow | allow-tracked | redact | sidecar", parseSecretMode)
+  .description("Open the interactive dashboard. This is the default when no command is given.")
+  .argument("[project]", "Limit the dashboard to a single project.")
+  .option("-w, --workspace <dir>", "The workspace directory.")
+  .option("--direction <dir>", "The direction to copy: both | claude-to-codex | codex-to-claude", parseDirection)
+  .option("--secrets <mode>", "How secrets are handled: gitignore-guard | allow | allow-tracked | redact | sidecar", parseSecretMode)
   .action((project, opts) => {
     runTui({ project, workspace: opts.workspace, direction: opts.direction, secretMode: opts.secrets });
   });
 
 program
   .command("harvest")
-  .description("Stage Codex-generated memories (~/.codex/memories) as proposed Claude memory files for review.")
-  .argument("[project]", "project to attribute / accept into")
-  .option("-w, --workspace <dir>", "workspace dir")
-  .option("--accept", "copy staged proposals into the project's live memory dir")
+  .description("Collect the memories Codex created (~/.codex/memories) and stage them as Claude memory files for your review.")
+  .argument("[project]", "The project to attribute the memories to, or to accept them into.")
+  .option("-w, --workspace <dir>", "The workspace directory.")
+  .option("--accept", "Copy the staged proposals into the project's live memory directory.")
   .action((project, opts) => {
     runHarvest({ project, workspace: opts.workspace, accept: !!opts.accept });
   });

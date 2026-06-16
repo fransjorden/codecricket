@@ -45,46 +45,51 @@ const HERO_B = [
   "    |  |  |/",
 ];
 
-// hop cycle, facing right
-const HOP = [
-  // crouch
-  [
-    "   /\\      ,/",
-    "  /  '----o\\",
-    " ( ::::::: >",
-    "  '-.___.-'",
-    "   J     L",
-  ],
-  // launch
-  [
-    "  /\\        ,/",
-    " /  '------o\\",
-    "( :::::::::  >",
-    " \\   ____.-'",
-    "  '-'",
-  ],
-  // airborne
-  [
-    "              ,/",
-    "       .----o\\",
-    "   ___( ::::: >",
-    "  /    '-----'",
-    " '",
-  ],
-  // land (squash)
-  [
-    "   /|        ,/",
-    "  / '------o\\",
-    " ( ::::::::  >",
-    "  '-.____.-'",
-    "   |\\    /|",
-  ],
+// hop-in-place: ONE consistent silhouette that bobs vertically (via top padding)
+// inside a fixed-height frame, with the legs loading/springing/tucking. Keeping the
+// body identical across frames reads as a real hop instead of a shape-shift.
+const HOP_BODY = [
+  "     /\\        ,",
+  "    /  \\      /",
+  "   /    \\   ,/",
+  "  /      '--o\\",
+  " (  ::::::::  >",
+  "  '-.______.-'",
 ];
 
-// mini sprite for the track, facing right / left, ground / air
+const HOP_LEGS = {
+  stand: "    |  |  | \\",
+  crouch: "    L  |  J",
+  push: "   /   |   \\",
+  tuck: "     \\ ' /",
+};
+
+const HOP_H = 10; // fixed frame height so the surrounding layout never jumps
+
+function hopFrame(topPad: number, legs: string, dust = false): string[] {
+  const lines: string[] = [];
+  for (let i = 0; i < topPad; i++) lines.push("");
+  lines.push(...HOP_BODY, legs);
+  while (lines.length < HOP_H - 1) lines.push("");
+  lines.push(dust ? "    .  '  ." : "");
+  return lines.slice(0, HOP_H);
+}
+
+// stand → crouch (load) → spring → peak (tuck) → fall → land (squash + flash)
+const HOP: Array<{ lines: string[]; flash?: boolean }> = [
+  { lines: hopFrame(2, HOP_LEGS.stand) },
+  { lines: hopFrame(3, HOP_LEGS.crouch) },
+  { lines: hopFrame(1, HOP_LEGS.push) },
+  { lines: hopFrame(0, HOP_LEGS.tuck, true) },
+  { lines: hopFrame(1, HOP_LEGS.push) },
+  { lines: hopFrame(2, HOP_LEGS.crouch), flash: true },
+];
+
+// mini sprite for the track, facing right / left.
+//   ground = standing mid-hop · air = airborne · sit = settled/at rest (shorter)
 const MINI = {
-  right: { ground: ["\\,", "%>>"], air: [" \\,", "~>>"] },
-  left: { ground: [",/", "<<%"], air: [",/ ", "<<~"] },
+  right: { ground: ["\\,", "%>>"], air: [" \\,", "~>>"], sit: ["", "%>."] },
+  left: { ground: [",/", "<<%"], air: [",/ ", "<<~"], sit: ["", ".<%"] },
 };
 
 function mirror(lines: string[]): string[] {
@@ -101,7 +106,7 @@ function Sprite({ lines, fg, x = 0 }: { lines: string[]; fg: string; x?: number 
   return (
     <box flexDirection="column">
       {lines.map((l, i) => (
-        <text key={i} fg={fg}>{pad + l}</text>
+        <text key={i} fg={fg}>{pad + l || " "}</text>
       ))}
     </box>
   );
@@ -120,8 +125,7 @@ export function Cricket({ variant = "idle", fps = 6 }: { variant?: "idle" | "hop
     return <Sprite lines={t % 2 ? HERO_B : HERO_A} fg={C.body} />;
   }
   const frame = HOP[t % HOP.length]!;
-  const landing = t % HOP.length === 3;
-  return <Sprite lines={frame} fg={landing ? C.flash : C.body} />;
+  return <Sprite lines={frame.lines} fg={frame.flash ? C.flash : C.body} />;
 }
 
 /** A tiny single-line cricket that idles (antenna/leg twitch). For the header. */
@@ -137,9 +141,26 @@ export function HeaderCricket({ fg = C.body }: { fg?: string }) {
 
 type Dir = "push" | "pull" | "both";
 
-/** A cricket hopping across a Claude ⇄ Codex rail. Shows sync direction. */
-export function HopTrack({ direction = "push", width = 30 }: { direction?: Dir; width?: number }) {
+/**
+ * A cricket on a Claude ⇄ Codex rail.
+ *   • Uncontrolled (no `progress`): loops back and forth forever — used in the demo.
+ *   • Controlled (`progress` 0..1): the cricket SITS at the start while 0, hops across as
+ *     progress climbs, then sits down at the destination once it hits 1. `direction` picks
+ *     which end is the start — push starts at Claude (left), pull starts at Codex (right).
+ */
+export function HopTrack({
+  direction = "push",
+  width = 30,
+  progress,
+}: {
+  direction?: Dir;
+  width?: number;
+  progress?: number;
+}) {
   const peak = 3; // max air height in rows
+  const controlled = progress !== undefined;
+
+  // uncontrolled (demo) timing
   const hopLen = 5; // columns per hop
   const fph = 5; // frames per hop
   const hops = Math.ceil(width / hopLen);
@@ -148,27 +169,63 @@ export function HopTrack({ direction = "push", width = 30 }: { direction?: Dir; 
   const cycle = span + hold;
 
   const [t, setT] = useState(0);
+  const [disp, setDisp] = useState(progress ?? 0); // eased position for the controlled mode
+  const [bob, setBob] = useState(0);
+
+  // demo loop
   useEffect(() => {
+    if (controlled) return;
     const id = setInterval(() => setT((x) => x + 1), 110);
     return () => clearInterval(id);
-  }, []);
+  }, [controlled]);
 
-  // for "both", alternate direction each full cycle
-  const leg = Math.floor(t / cycle);
-  const local = t % cycle;
-  let goingRight = direction === "push" ? true : direction === "pull" ? false : leg % 2 === 0;
+  // controlled: ease toward the target and bob while travelling; snap + rest at the ends
+  useEffect(() => {
+    if (!controlled) return;
+    const target = Math.max(0, Math.min(1, progress ?? 0));
+    if (target <= 0.001 || target >= 0.999) {
+      setDisp(target); // settle instantly at an endpoint — the cricket just sits
+      return;
+    }
+    const id = setInterval(() => {
+      setDisp((d) => (Math.abs(target - d) < 0.01 ? target : d + (target - d) * 0.3));
+      setBob((b) => b + 1);
+    }, 100);
+    return () => clearInterval(id);
+  }, [controlled, progress]);
 
-  const moving = local < span;
-  const tt = Math.min(local, span - 1);
-  const hopIndex = Math.floor(tt / fph);
-  const phase = (tt % fph) / fph;
-  const dist = Math.min(width, Math.round((hopIndex + phase) * hopLen));
+  let goingRight: boolean;
+  let dist: number;
+  let height: number;
+  let pose: "ground" | "air" | "sit";
+
+  if (controlled) {
+    const p = Math.max(0, Math.min(1, progress ?? 0));
+    goingRight = direction !== "pull";
+    const arrived = p >= 0.999 && Math.abs(disp - p) < 0.01;
+    const waiting = p <= 0.001 && Math.abs(disp - p) < 0.01;
+    const active = !arrived && !waiting;
+    dist = Math.round(disp * width);
+    const HOPCY = [0, 1, 2, 3, 2, 1];
+    height = active ? HOPCY[bob % HOPCY.length]! : 0;
+    pose = height > 0 ? "air" : active ? "ground" : "sit";
+  } else {
+    // for "both", alternate direction each full cycle
+    const leg = Math.floor(t / cycle);
+    const local = t % cycle;
+    goingRight = direction === "push" ? true : direction === "pull" ? false : leg % 2 === 0;
+    const moving = local < span;
+    const tt = Math.min(local, span - 1);
+    const hopIndex = Math.floor(tt / fph);
+    const phase = (tt % fph) / fph;
+    dist = Math.min(width, Math.round((hopIndex + phase) * hopLen));
+    height = moving ? Math.round(peak * Math.sin(Math.PI * phase)) : 0;
+    pose = height > 0 ? "air" : "ground";
+  }
+
   const x = goingRight ? dist : width - dist;
-  const height = moving ? Math.round(peak * Math.sin(Math.PI * phase)) : 0;
-  const air = height > 0;
-
   const facing = goingRight ? "right" : "left";
-  const sprite = MINI[facing][air ? "air" : "ground"];
+  const sprite = MINI[facing][pose];
 
   // build the air zone: peak+2 rows, sprite placed at (peak-height)
   const rows = peak + 2;
@@ -187,7 +244,7 @@ export function HopTrack({ direction = "push", width = 30 }: { direction?: Dir; 
   return (
     <box flexDirection="column">
       {zone.map((l, i) => (
-        <text key={i} fg={air ? C.antenna : C.body}>{l || " "}</text>
+        <text key={i} fg={pose === "air" ? C.antenna : C.body}>{l || " "}</text>
       ))}
       <text>
         <span fg={C.claude}>{" Claude "}</span>
@@ -196,6 +253,78 @@ export function HopTrack({ direction = "push", width = 30 }: { direction?: Dir; 
         <span fg={C.codex}>◉</span>
         <span fg={C.codex}>{" Codex"}</span>
       </text>
+    </box>
+  );
+}
+
+// ---- splash: big cricket + a shimmering "codecricket" wordmark --------------
+
+// figlet "Standard" (wide) and "Small" (narrow) — baked in so there's no runtime dep.
+const BANNER_STD = [
+  "                _                _      _        _   ",
+  "   ___ ___   __| | ___  ___ _ __(_) ___| | _____| |_ ",
+  "  / __/ _ \\ / _` |/ _ \\/ __| '__| |/ __| |/ / _ \\ __|",
+  " | (_| (_) | (_| |  __/ (__| |  | | (__|   <  __/ |_ ",
+  "  \\___\\___/ \\__,_|\\___|\\___|_|  |_|\\___|_|\\_\\___|\\__|",
+];
+const BANNER_SMALL = [
+  "             _            _    _       _   ",
+  "  __ ___  __| |___ __ _ _(_)__| |_____| |_ ",
+  " / _/ _ \\/ _` / -_) _| '_| / _| / / -_)  _|",
+  " \\__\\___/\\__,_\\___\\__|_| |_\\__|_\\_\\___|\\__|",
+];
+
+// dim → bright green → near-white: the brightness band that sweeps across the wordmark
+const SHIM = ["#166534", "#22c55e", "#4ade80", "#86efac", "#ecfdf5"];
+
+/** The "codecricket" wordmark with a highlight that sweeps left → right (the shimmer). */
+function Wordmark({ lines }: { lines: string[] }) {
+  const [p, setP] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setP((x) => x + 1), 80);
+    return () => clearInterval(id);
+  }, []);
+  const w = lines[0]?.length ?? 0;
+  const band = 7; // half-width of the bright band
+  const cycle = w + band * 2 + 10; // sweep across, then a short pause before repeating
+  const center = ((p * 2) % cycle) - band;
+
+  return (
+    <box flexDirection="column">
+      {lines.map((line, r) => {
+        // colour each cell by its distance from the moving band, then merge equal-colour runs
+        const runs: { text: string; color: string }[] = [];
+        for (let c = 0; c < line.length; c++) {
+          const d = Math.abs(c - center);
+          const t = d < band ? 1 - d / band : 0;
+          const color = SHIM[Math.min(SHIM.length - 1, Math.round(t * (SHIM.length - 1)))]!;
+          const last = runs[runs.length - 1];
+          if (last && last.color === color) last.text += line[c]!;
+          else runs.push({ text: line[c]!, color });
+        }
+        return (
+          <text key={r}>
+            {runs.map((run, i) => (
+              <span key={i} fg={run.color}>{run.text}</span>
+            ))}
+          </text>
+        );
+      })}
+    </box>
+  );
+}
+
+/** Full splash screen: the hero cricket above a shimmering wordmark + tagline. */
+export function Splash({ width = 80, variant = "idle" }: { width?: number; variant?: "idle" | "hop" }) {
+  const banner = width >= 56 ? BANNER_STD : width >= 46 ? BANNER_SMALL : null;
+  return (
+    <box flexDirection="column" alignItems="center">
+      <Cricket variant={variant} />
+      <box marginTop={1}>
+        {banner ? <Wordmark lines={banner} /> : <text fg={C.body} attributes={1}>codecricket</text>}
+      </box>
+      <text fg={C.dim} marginTop={1}>Version 0.1.0    (C) 2026 Frans Jorden Hoorn</text>
+      <text fg={C.dim}>Synchronizes your Claude and Codex context, both ways.</text>
     </box>
   );
 }
@@ -218,14 +347,14 @@ if (typeof import.meta !== "undefined" && (import.meta as any).main) {
     });
     return (
       <box flexDirection="column" padding={1}>
-        <text fg={C.eye} attributes={1}>codecricket</text>
-        <text fg={C.dim}>the mascot — hops your context Claude ⇄ Codex</text>
+        <text fg={C.white} attributes={1}>splash</text>
+        <Splash width={70} />
 
         <text fg={C.white} attributes={1} marginTop={1}>idle</text>
         <Cricket variant="idle" />
 
         <text fg={C.white} attributes={1} marginTop={1}>hopping in place</text>
-        <Cricket variant="hop" />
+        <Cricket variant="hop" fps={8} />
 
         <text fg={C.white} attributes={1} marginTop={1}>push  ·  Claude → Codex</text>
         <HopTrack direction="push" />

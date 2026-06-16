@@ -32,7 +32,7 @@ test("dashboard renders header, table, and a project row", async () => {
     await new Promise((r) => setTimeout(r, 25));
   }
   expect(frame).toContain("codecricket");
-  expect(frame).toContain("Pushing Claude → Codex");
+  expect(frame).toContain("Copying Claude → Codex");
   expect(frame).toContain("PROJECT");
   expect(frame).toContain("alpha");
   expect(frame).toContain("● changes");

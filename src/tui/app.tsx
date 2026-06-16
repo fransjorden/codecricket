@@ -24,7 +24,7 @@ import { defaultSecretPolicy, loadProjectsMap, resolveWorkspace, saveProjectsMap
 import { homeDir } from "../core/paths.js";
 import { readText } from "../core/fsx.js";
 import { diffLines, type DiffLine } from "../util/diffPreview.js";
-import { HeaderCricket, HopTrack } from "./cricket.js";
+import { HeaderCricket, HopTrack, Splash } from "./cricket.js";
 import type { Direction } from "../core/merge.js";
 import type { SecretMode } from "../types.js";
 
@@ -139,7 +139,7 @@ function includable(it: Item): boolean {
   return hasWork(it.plan) && !it.sum.blocked && !it.sum.stranded;
 }
 function directionLabel(d: Direction): string {
-  return d === "claude-to-codex" ? "Pushing Claude → Codex" : d === "codex-to-claude" ? "Pulling Codex → Claude" : "Two-way sync";
+  return d === "claude-to-codex" ? "Copying Claude → Codex" : d === "codex-to-claude" ? "Copying Codex → Claude" : "Synchronizing both ways";
 }
 function hopDir(d: Direction): "push" | "pull" | "both" {
   return d === "claude-to-codex" ? "push" : d === "codex-to-claude" ? "pull" : "both";
@@ -149,7 +149,7 @@ function secretLabel(m: SecretMode): string {
     : m === "allow-tracked" ? "secrets allowed in tracked files"
     : m === "allow" ? "secrets written as-is"
     : m === "redact" ? "secrets masked in AGENTS.md"
-    : "secrets in a gitignored sidecar";
+    : "secrets in an ignored sidecar";
 }
 function stateOf(it: Item): { text: string; color: string } {
   const s = it.sum;
@@ -212,6 +212,13 @@ export function App({ opts }: { opts: TuiOptions }) {
   const [tick, setTick] = useState(0);
   const [mapCandidates, setMapCandidates] = useState<MapCandidate[]>([]);
   const [mapCursor, setMapCursor] = useState(0);
+  const [showSplash, setShowSplash] = useState(true);
+
+  // Splash on launch: auto-dismiss after a beat (the scan runs underneath meanwhile).
+  useEffect(() => {
+    const id = setTimeout(() => setShowSplash(false), 2600);
+    return () => clearTimeout(id);
+  }, []);
 
   const spinning = scanning || view === "applying";
   useEffect(() => {
@@ -275,7 +282,7 @@ export function App({ opts }: { opts: TuiOptions }) {
     if (!selected) return;
     const cands = buildMapCandidates(selected.project.name, workspace);
     if (cands.length === 0) {
-      setMessage("No stranded memory dirs to map.");
+      setMessage("There are no orphaned memory directories to map.");
       return;
     }
     setMapCandidates(cands);
@@ -296,7 +303,7 @@ export function App({ opts }: { opts: TuiOptions }) {
       note: `mapped via TUI from stranded "${c.label}"`,
     };
     saveProjectsMap(map);
-    setMessage(`Mapped ${selected.project.name} → "${c.label}" memory (${c.detail}).`);
+    setMessage(`Done. ${selected.project.name} is now mapped to the "${c.label}" memory (${c.detail}).`);
     setView("list");
     setRefresh((r) => r + 1);
   }
@@ -332,13 +339,18 @@ export function App({ opts }: { opts: TuiOptions }) {
       await new Promise((r) => setTimeout(r, 55));
     }
     saveState(state);
-    setApplyResult(`Applied ${applied} project(s). Press any key to return.`);
+    setApplyResult(`Operation complete. ${applied} project(s) synchronized successfully. Press any key to continue.`);
   }
 
   useKeyboard((key) => {
     const n = key.name;
     const isQ = n === "q" || (key.ctrl && n === "c");
 
+    if (showSplash) {
+      if (isQ) return quit();
+      setShowSplash(false);
+      return;
+    }
     if (view === "applying") {
       if (applyResult) {
         setView("list");
@@ -395,7 +407,7 @@ export function App({ opts }: { opts: TuiOptions }) {
       }
     } else if (n === "a") {
       if (apply.inc.length > 0) setView("confirm");
-      else setMessage("Nothing to apply — no projects are included.");
+      else setMessage("There is nothing to apply — no projects are currently selected.");
     } else if (n === "d") {
       setDirection((d) => DIRECTIONS[(DIRECTIONS.indexOf(d) + 1) % DIRECTIONS.length]!);
       setMessage("");
@@ -422,23 +434,42 @@ export function App({ opts }: { opts: TuiOptions }) {
     </box>
   );
 
+  if (showSplash) {
+    return (
+      <box flexDirection="column" alignItems="center" justifyContent="center" height={height} width={width}>
+        <Splash width={width} />
+        <text fg={PAL.dim} marginTop={1}>{scanning ? "Please wait, initializing…" : "Press any key to continue."}</text>
+      </box>
+    );
+  }
+
   if (view === "help") {
     return (
       <box flexDirection="column" padding={1}>
         {Header}
-        <text fg={PAL.white} attributes={1}>{"\nWhat this does"}</text>
-        <text fg={PAL.gray}>  Mirrors each project's CLAUDE.md + memory into Codex's AGENTS.md (and back).</text>
-        <text fg={PAL.white} attributes={1}>{"\nThe table"}</text>
-        <text fg={PAL.gray}>  State    ✓ in sync · ● changes · ⚠ conflict · ✖ blocked · ? needs map</text>
-        <text fg={PAL.gray}>  Push / Pull   items copied Claude→Codex / Codex→Claude</text>
-        <text fg={PAL.gray}>  Sec      live tokens/webhooks found    Memory  where memory lives    Synced  last write</text>
-        <text fg={PAL.white} attributes={1}>{"\nActions"}</text>
-        <text fg={PAL.gray}>  ↑↓ Move   Enter View diff   Space Include/exclude</text>
-        <text fg={PAL.gray}>  A Apply (asks first)   D Direction   S Secrets   R Re-scan   Q Quit</text>
-        <text fg={PAL.gray}>  M Map memory — attach a renamed project's stranded memory dir (fixes "? needs map")</text>
-        <text fg={PAL.white} attributes={1}>{"\nDirection (D)"}</text>
-        <text fg={PAL.gray}>  Claude→Codex push in · Codex→Claude pull back · Two-way reconcile (newest wins)</text>
-        <text fg={PAL.cyan}>{"\nPress any key to go back."}</text>
+        <text fg={PAL.white} attributes={1}>{"\nAbout This Program"}</text>
+        <text fg={PAL.gray}>  CodeCricket mirrors each project's CLAUDE.md and memory into Codex's</text>
+        <text fg={PAL.gray}>  AGENTS.md file, and copies any changes back again the other way.</text>
+        <text fg={PAL.white} attributes={1}>{"\nReading the Table"}</text>
+        <text fg={PAL.gray}>  State ........... ✓ in sync   ● changes   ⚠ conflict   ✖ blocked   ? needs map</text>
+        <text fg={PAL.gray}>  Push / Pull ..... Items copied from Claude to Codex, and from Codex to Claude</text>
+        <text fg={PAL.gray}>  Sec ............. Live tokens or webhooks that were found in the files</text>
+        <text fg={PAL.gray}>  Memory .......... Where this project's memory is stored</text>
+        <text fg={PAL.gray}>  Synced .......... When the project was last written</text>
+        <text fg={PAL.white} attributes={1}>{"\nAvailable Commands"}</text>
+        <text fg={PAL.gray}>  Up / Down ....... Move the selection between projects</text>
+        <text fg={PAL.gray}>  Enter ........... View the differences for the selected project</text>
+        <text fg={PAL.gray}>  Space ........... Include or exclude the project from the next operation</text>
+        <text fg={PAL.gray}>  A ............... Apply the selected changes (you will be asked to confirm)</text>
+        <text fg={PAL.gray}>  D ............... Change the direction of the copy</text>
+        <text fg={PAL.gray}>  S ............... Change how secrets are handled</text>
+        <text fg={PAL.gray}>  M ............... Map a renamed project to its orphaned memory directory</text>
+        <text fg={PAL.gray}>  R ............... Scan the workspace again</text>
+        <text fg={PAL.gray}>  Q ............... Quit and return to the command prompt</text>
+        <text fg={PAL.white} attributes={1}>{"\nAbout the Direction (press D to change)"}</text>
+        <text fg={PAL.gray}>  Claude to Codex copies your notes into Codex. Codex to Claude copies them</text>
+        <text fg={PAL.gray}>  back. Both directions reconciles the two sides, keeping whichever is newer.</text>
+        <text fg={PAL.cyan}>{"\nPress any key to return to the main screen."}</text>
       </box>
     );
   }
@@ -447,17 +478,19 @@ export function App({ opts }: { opts: TuiOptions }) {
     return (
       <box flexDirection="column" padding={1}>
         {Header}
-        <box border borderColor={PAL.yellow} title="Apply changes?" flexDirection="column" padding={1} marginTop={1}>
+        <box border borderColor={PAL.yellow} title="Confirm Operation" flexDirection="column" padding={1} marginTop={1}>
           <box marginBottom={1}>
-            <HopTrack direction={hopDir(direction)} width={Math.min(34, Math.max(16, width - 30))} />
+            <HopTrack direction={hopDir(direction)} width={Math.min(34, Math.max(16, width - 30))} progress={0} />
           </box>
-          <text><span fg={PAL.gray}>Direction   </span>{directionLabel(direction)}</text>
-          <text><span fg={PAL.gray}>Included    </span>{`${apply.inc.length} project(s)`}</text>
-          <text><span fg={PAL.gray}>Will write  </span>{`${apply.agentsWrites} AGENTS.md + ${apply.claudeWrites} Claude file(s) `}<span fg={PAL.gray}>(each backed up to .bak)</span></text>
-          {apply.withSecrets > 0 ? <text><span fg={PAL.gray}>Secrets     </span><span fg={PAL.yellow}>{`${apply.withSecrets} with secrets — ${secretLabel(secretMode)}`}</span></text> : <text> </text>}
-          {apply.blocked > 0 ? <text><span fg={PAL.gray}>Skipped     </span><span fg={PAL.red}>{`${apply.blocked} blocked (git-tracked AGENTS.md)`}</span></text> : <text> </text>}
+          <text>You are about to apply the following changes:</text>
           <text>{" "}</text>
-          <text><span fg={PAL.cyan} attributes={1}>Enter</span> / <span fg={PAL.cyan} attributes={1}>Y</span>  Apply      <span fg={PAL.cyan} attributes={1}>Esc</span> / <span fg={PAL.cyan} attributes={1}>N</span>  Cancel</text>
+          <text><span fg={PAL.gray}>Direction ....... </span>{directionLabel(direction)}</text>
+          <text><span fg={PAL.gray}>Projects ........ </span>{`${apply.inc.length} project(s) selected`}</text>
+          <text><span fg={PAL.gray}>Files to write .. </span>{`${apply.agentsWrites} AGENTS.md and ${apply.claudeWrites} Claude file(s) `}<span fg={PAL.gray}>(a .bak backup is kept)</span></text>
+          {apply.withSecrets > 0 ? <text><span fg={PAL.gray}>Secrets ......... </span><span fg={PAL.yellow}>{`${apply.withSecrets} project(s) contain secrets — ${secretLabel(secretMode).toLowerCase()}`}</span></text> : <text> </text>}
+          {apply.blocked > 0 ? <text><span fg={PAL.gray}>Skipped ......... </span><span fg={PAL.red}>{`${apply.blocked} project(s) blocked — AGENTS.md is tracked by git`}</span></text> : <text> </text>}
+          <text>{" "}</text>
+          <text>Press <span fg={PAL.cyan} attributes={1}>Enter</span> or <span fg={PAL.cyan} attributes={1}>Y</span> to continue, or <span fg={PAL.cyan} attributes={1}>Esc</span> or <span fg={PAL.cyan} attributes={1}>N</span> to cancel.</text>
         </box>
       </box>
     );
@@ -467,12 +500,13 @@ export function App({ opts }: { opts: TuiOptions }) {
     return (
       <box flexDirection="column" padding={1}>
         {Header}
-        <box border borderColor={PAL.cyan} title={`Map memory → ${selected?.project.name ?? ""}`} flexDirection="column" padding={1} marginTop={1}>
-          <text fg={PAL.gray}>A renamed project leaves its memory behind. Pick a stranded dir to attach:</text>
+        <box border borderColor={PAL.cyan} title={`Map Memory Directory — ${selected?.project.name ?? ""}`} flexDirection="column" padding={1} marginTop={1}>
+          <text fg={PAL.gray}>When a project is renamed, its memory is left behind in the old location.</text>
+          <text fg={PAL.gray}>Please choose the orphaned directory you would like to attach:</text>
           <text> </text>
           {mapCandidates.map((c, i) => {
             const isCur = i === mapCursor;
-            const line = `${pad(c.label, 22)} ${c.detail}${c.suggested ? "  ✓ suggested" : ""}`;
+            const line = `${pad(c.label, 22)} ${c.detail}${c.suggested ? "  ✓ recommended" : ""}`;
             const max = Math.max(30, width - 12);
             const shown = (isCur ? "❯ " : "  ") + (line.length > max ? line.slice(0, max - 1) + "…" : line);
             return (
@@ -481,28 +515,39 @@ export function App({ opts }: { opts: TuiOptions }) {
               </text>
             );
           })}
-          {mapCandidates.length === 0 ? <text fg={PAL.gray}>No stranded memory dirs found.</text> : null}
+          {mapCandidates.length === 0 ? <text fg={PAL.gray}>No orphaned memory directories were found.</text> : null}
           <text> </text>
-          <text><span fg={PAL.cyan} attributes={1}>Enter</span> Attach this memory      <span fg={PAL.cyan} attributes={1}>Esc</span> Cancel</text>
+          <text>Press <span fg={PAL.cyan} attributes={1}>Enter</span> to attach the selected memory, or <span fg={PAL.cyan} attributes={1}>Esc</span> to cancel.</text>
         </box>
       </box>
     );
   }
 
   if (view === "applying") {
+    // Position the cricket by real progress: a finished project counts full, the one
+    // currently writing counts half — so it sets off the moment copying starts.
+    const total = apply.inc.length;
+    let doneCount = 0;
+    let writingCount = 0;
+    for (const it of apply.inc) {
+      const s = applyProg[it.project.name];
+      if (s === "done" || s === "skipped") doneCount++;
+      else if (s === "writing") writingCount++;
+    }
+    const applyProgress = total === 0 ? 1 : Math.min(1, (doneCount + writingCount * 0.5) / total);
     return (
       <box flexDirection="column" padding={1}>
         {Header}
-        <text fg={PAL.white} attributes={1}>{`\nApplying · ${directionLabel(direction)}`}</text>
+        <text fg={PAL.white} attributes={1}>{`\nPlease wait — ${directionLabel(direction).toLowerCase()}…`}</text>
         <box marginTop={1}>
-          <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} />
+          <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} progress={applyProgress} />
         </box>
         <box flexDirection="column" marginTop={1}>
           {apply.inc.map((it) => {
             const st = applyProg[it.project.name] ?? "pending";
             const icon = st === "done" ? "✓" : st === "skipped" ? "✖" : st === "writing" ? spin : "·";
             const color = st === "done" ? PAL.green : st === "skipped" ? PAL.red : st === "writing" ? PAL.cyan : PAL.dim;
-            const label = st === "writing" ? "writing…" : st === "done" ? "done" : st === "skipped" ? "skipped (blocked)" : "queued";
+            const label = st === "writing" ? "writing, please wait…" : st === "done" ? "completed" : st === "skipped" ? "skipped (file is tracked by git)" : "waiting…";
             return (
               <text key={it.project.name}>
                 {"  "}<span fg={color}>{icon}</span>{" "}{pad(it.project.name, W.name)}<span fg={PAL.gray}>{label}</span>
@@ -510,7 +555,7 @@ export function App({ opts }: { opts: TuiOptions }) {
             );
           })}
         </box>
-        <text marginTop={1} fg={applyResult ? PAL.green : PAL.cyan}>{applyResult || `${spin} working…`}</text>
+        <text marginTop={1} fg={applyResult ? PAL.green : PAL.cyan}>{applyResult || `${spin} Working, please wait…`}</text>
       </box>
     );
   }
@@ -540,7 +585,7 @@ export function App({ opts }: { opts: TuiOptions }) {
             );
           })}
         </box>
-        <text fg={PAL.gray}>{`showing ${Math.min(scroll + 1, detailLines.length)}–${Math.min(scroll + detailRows, detailLines.length)} of ${detailLines.length}    `}<span fg={PAL.cyan}>↑↓</span> scroll  <span fg={PAL.cyan}>←</span> back  <span fg={PAL.cyan}>A</span> apply  <span fg={PAL.cyan}>Q</span> quit</text>
+        <text fg={PAL.gray}>{`Showing lines ${Math.min(scroll + 1, detailLines.length)} to ${Math.min(scroll + detailRows, detailLines.length)} of ${detailLines.length}.    `}<span fg={PAL.cyan}>↑↓</span> Scroll   <span fg={PAL.cyan}>←</span> Back   <span fg={PAL.cyan}>A</span> Apply   <span fg={PAL.cyan}>Q</span> Quit</text>
       </box>
     );
   }
@@ -586,24 +631,24 @@ export function App({ opts }: { opts: TuiOptions }) {
       <box flexDirection="column" marginTop={1}>
         {scanning ? (
           <box flexDirection="column">
-            <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} />
-            <text><span fg={PAL.cyan}>{spin}</span><span fg={PAL.gray}>{` Scanning projects… ${scanned}/${projects.length}`}</span></text>
+            <HopTrack direction={hopDir(direction)} width={Math.min(40, Math.max(18, width - 26))} progress={projects.length ? scanned / projects.length : 1} />
+            <text><span fg={PAL.cyan}>{spin}</span><span fg={PAL.gray}>{` Please wait — scanning projects (${scanned} of ${projects.length})…`}</span></text>
           </box>
         ) : (
           <text>
-            <span fg={PAL.gray}>{`${items.length} projects · `}</span>
+            <span fg={PAL.gray}>{`${items.length} project(s) found.   `}</span>
             <span fg={PAL.green}>{`${inSync} in sync`}</span>
-            <span fg={PAL.gray}>{" · "}</span>
+            <span fg={PAL.gray}>{", "}</span>
             <span fg={PAL.cyan}>{`${withChanges} with changes`}</span>
-            {withSecrets > 0 ? <span fg={PAL.yellow}>{` · ${withSecrets} with secrets`}</span> : <span> </span>}
-            <span fg={PAL.gray}>{"    "}</span>
-            <span fg={PAL.cyan}>?</span><span fg={PAL.gray}> help</span>
+            {withSecrets > 0 ? <span fg={PAL.yellow}>{`, ${withSecrets} with secrets`}</span> : null}
+            <span fg={PAL.gray}>{".    Press "}</span>
+            <span fg={PAL.cyan}>?</span><span fg={PAL.gray}>{" for Help."}</span>
           </text>
         )}
         {message ? (
           <text fg={PAL.green}>{message}</text>
         ) : !scanning && selected?.sum.stranded ? (
-          <text fg={PAL.yellow}>{`  ${selected.project.name} has no memory at the expected path — press M to map it`}</text>
+          <text fg={PAL.yellow}>{`  ${selected.project.name} has no memory in the expected location. Press M to map its directory.`}</text>
         ) : null}
         {!scanning ? (
           <text fg={PAL.gray}>

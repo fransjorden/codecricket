@@ -5,7 +5,7 @@
     /  \      /
    /    \   ,/
   /      '--o\
- (  ::::::::  >        the cricket hops your context  Claude ⇄ Codex
+ (  ::::::::  >        Synchronizes your Claude and Codex context — both ways.
   '-.______.-'
     |  |  | \
 ```
@@ -29,7 +29,7 @@ That round-trip has to be lossless, has to handle renamed projects, and must not
 leak the secrets that live in memory into a committed `AGENTS.md`. `codecricket`
 does all three.
 
-A personal tool, shared as-is. Overview: [ccsync.jorden.ai](https://ccsync.jorden.ai).
+A personal tool, shared as-is. Overview: [cricket.jorden.ai](https://cricket.jorden.ai).
 
 ## Install
 
@@ -70,7 +70,7 @@ for confirmation first). While it scans or applies, a cricket hops across a
 Claude ⇄ Codex rail in the direction it's syncing.
 
 ```
-%>> codecricket  ·  Pushing Claude → Codex  ·  secrets kept out of git
+%>> codecricket  ·  Copying Claude → Codex  ·  secrets kept out of git
 
   PROJECT               STATE       PUSH  PULL  SEC  MEMORY    SYNCED
 ❯◉ type-machine          ● changes   5     ·     3    override  never
@@ -78,8 +78,8 @@ Claude ⇄ Codex rail in the direction it's syncing.
   ◉ openclaw             ● changes   9     ·     1    derived   never
   · ivosw                ✓ in sync   ·     ·     ·    derived   2m ago
 
-2 projects with changes · 1 with secrets
-↑↓ Move  Enter View  Space Include  A Apply  D Direction  S Secrets  M Map  Q Quit
+4 project(s) found.   1 in sync, 3 with changes, 2 with secrets.    Press ? for Help.
+↑↓ Move  Enter View  Space Include  A Apply  D Direction  S Secrets  M Map  R Rescan  Q Quit
 ```
 
 A project showing `? needs map` (renamed, so its memory is stranded under the old
@@ -191,3 +191,9 @@ dashboard is React via [OpenTUI](https://opentui.com) and runs under **Bun**;
 
 Out of scope by design: `.claude/settings.local.json` / permissions (tool-specific
 and they embed secrets), Codex `config.toml`, plugins, history/sessions.
+
+---
+
+```
+CodeCricket  ·  Version 0.1.0  ·  (C) 2026 Frans Jorden Hoorn  ·  Thank you for reading.
+```
